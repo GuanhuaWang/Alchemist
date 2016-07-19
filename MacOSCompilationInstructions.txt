@@ -1,0 +1,47 @@
+# for Elemental
+
+brew install homebrew/science/scalapack
+brew reinstall gcc --without-multilib % to have OpenMP support
+create alchemist directory and do all work in there
+
+git clone libflame
+LDFLAGS="-framework Accelerate" ./configure --prefix=/Users/gittens/alchemist/bins/libflame --with-cc=/usr/local/bin/gcc-6 --with-ranlib=/usr/local/bin/gcc-ranlib-6 --enable-dynamic-build
+% take a note of the autodetected fortran linker flags which might be needed to link against libflame: -L/usr/local/Cellar/gcc/6.1.0/lib/gcc/6/gcc/x86_64-apple-darwin15.5.0/6.1.0 -L/usr/local/Cellar/gcc/6.1.0/lib/gcc/6/gcc/x86_64-apple-darwin15.5.0/6.1.0/../../.. -lgfortran -lquadmath -lm
+make -j 4
+make install
+
+git clone elemental
+cd elemental; mkdir build
+cd build; 
+cmake -DCMAKE_INSTALL_PREFIX=/Users/gittens/alchemist/bins/Elemental -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=/usr/local/bin/g++-6 -DCMAKE_C_COMPILER=/usr/local/bin/gcc-6 -DCMAKE_FORTRAN_COMPILER=/usr/local/bin/gfortran-6 -DMATH_LIBS="-framework Accelerate;/Users/gittens/alchemist/bins/libflame/lib/libflame.a" -DEL_EXAMPLES=ON -DEL_TESTS=ON ..
+make -j 4
+make test
+make install
+
+%% hybrid version
+cd elemental; mkdir hybrid-build
+cd hybrid-build
+cmake -DCMAKE_INSTALL_PREFIX=/Users/gittens/alchemist/bins/HybridElemental -DCMAKE_BUILD_TYPE=HybridDebug -DCMAKE_CXX_COMPILER=/usr/local/bin/g++-6 -DCMAKE_C_COMPILER=/usr/local/bin/gcc-6 -DCMAKE_FORTRAN_COMPILER=/usr/local/bin/gfortran-6 -DMATH_LIBS="-framework Accelerate;/Users/gittens/alchemist/bins/libflame/lib/libflame.a" -DEL_EXAMPLES=ON -DEL_TESTS=ON ..
+make -j 4
+make test
+make install
+
+
+go to bins/elemental/sandbox and run make all
+then can execute test w/
+DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:../lib ./test
+alternatively, to avoid having to specify library path, can modify
+make line to
+ %: %.cpp
+     $(CXX) $(EL_COMPILE_FLAGS) $< -o $@ $(EL_LINK_FLAGS) $(EL_LIBS) -Wl,-rpath,$(EL_LIB)
+     the -Wl,-rpath,$(EL_LIB) compiles in the location of the elemental-installed libraries
+
+     to run the included tests (made with make test)
+     export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:/Users/gittens/alchemist/bins/(Hybrid)Elemental/lib
+     ctest -O test.log
+
+     can use 
+     otool -L on the final binary file to check if linked against openblas (under linux, ldd is equiv)
+
+
+
